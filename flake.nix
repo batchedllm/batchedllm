@@ -22,6 +22,8 @@
             git
             
             python313 # TODO: keep in sync with pyproject.toml
+            ruff
+            ty
             uv
           ];
 
@@ -34,6 +36,7 @@
             unset PYTHONPATH
             uv sync
             . .venv/bin/activate
+            export PATH="${pkgs.ruff}/bin:${pkgs.ty}/bin:$PATH"
           '';
         };
       }
