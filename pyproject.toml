@@ -21,9 +21,15 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "pytest>=8.4.2",
+    "pytest-asyncio>=1.2.0",
     "ruff>=0.15.7",
     "ty>=0.0.24",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+asyncio_mode = "auto"
 
 [project.urls]
 repository = "https://github.com/batchedllm/batchedllm"
