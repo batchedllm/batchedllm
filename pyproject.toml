@@ -1,0 +1,38 @@
+[project]
+name = "batchedllm"
+readme = "README.md"
+keywords = ["batched", "LLM"]
+authors = [
+    {name = "Danil Kireev", email="nenil@nenil.dev"},
+    {name = "Daniil Larionov", email="rexhaif.io@gmail.com"},
+]
+license = "MIT"
+dynamic = ["version", "description"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Utilities",
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3.13",
+]
+requires-python = ">=3.13"
+dependencies = [
+    "tqdm>=4.67.3",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.7",
+    "ty>=0.0.24",
+]
+
+[project.urls]
+repository = "https://github.com/batchedllm/batchedllm"
+
+[build-system]
+requires = ["hatchling", "hatch-docstring-description"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "src/batchedllm/__init__.py"
+
+[tool.hatch.metadata.hooks.docstring-description]
