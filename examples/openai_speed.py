@@ -7,13 +7,13 @@
 # ]
 # ///
 
-import asyncio
 import os
-from time import perf_counter
 import random
+import asyncio
+from time import perf_counter
 
+from openai import AsyncOpenAI # ty: ignore[unresolved-import]
 from batchedllm import Manager
-from openai import AsyncOpenAI
 
 PROMPTS = [
     "Come up with 4 words describing rain.",
@@ -21,7 +21,8 @@ PROMPTS = [
     "Come up with 4 words describing plants.",
     "Come up with 4 words describing coffee.",
 ]
-CONCURENCY = 4
+CONCURRENCY = 4
+
 
 async def main() -> None:
     client = AsyncOpenAI(
@@ -37,7 +38,10 @@ async def main() -> None:
         # call 1 by 1
         response = await client.chat.completions.create(
             model=model,
-            messages=[{"role": "user", "content": f"{random.randint(0, 99)}. {prompt}"}],
+            # random.randint to prevent caching
+            messages=[
+                {"role": "user", "content": f"{random.randint(0, 99)}. {prompt}"}
+            ],
         )
         # process separetly
         try:
@@ -45,15 +49,18 @@ async def main() -> None:
         except (AttributeError, IndexError, TypeError):
             sequential_outputs.append(repr(response))
     sequential_elapsed = perf_counter() - sequential_started
-    
+
     # using Manager
     batched_started = perf_counter()
-    manager = Manager(client, concurency=CONCURENCY, progress_bar=True)
+    manager = Manager(client, concurrency=CONCURRENCY, progress_bar=True)
     for prompt in PROMPTS:
         # same call name and parameters
         manager.chat.completions.create(
             model=model,
-            messages=[{"role": "user", "content": f"{random.randint(0, 99)}. {prompt}"}],
+            # random.randint to prevent caching
+            messages=[
+                {"role": "user", "content": f"{random.randint(0, 99)}. {prompt}"}
+            ],
         )
 
     # now we collect results
@@ -70,17 +77,19 @@ async def main() -> None:
 
     print(f"Model                  : {model}")
     print(f"Prompts                : {len(PROMPTS)}")
-    print(f"Batched concurrency    : {CONCURENCY}")
+    print(f"Batched concurrency    : {CONCURRENCY}")
 
     print()
     print(f"Sequential async OpenAI: {sequential_elapsed:.2f}s")
-    print(f"BatchedLLM manager     : {batched_elapsed:.2f}s")    
+    print(f"BatchedLLM manager     : {batched_elapsed:.2f}s")
     if batched_elapsed < sequential_elapsed:
         print(f"Speedup                : {sequential_elapsed / batched_elapsed:.2f}x")
 
     print()
     print("Results")
-    for prompt, sequential, batched in zip(PROMPTS, sequential_outputs, batched_outputs, strict=True):
+    for prompt, sequential, batched in zip(
+        PROMPTS, sequential_outputs, batched_outputs
+    ):
         print(f"- Prompt               : {prompt}")
         print(f"  Sequential           : {sequential}")
         print(f"  Batched              : {batched}")

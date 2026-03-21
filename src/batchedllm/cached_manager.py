@@ -1,63 +1,85 @@
+import asyncio
+import inspect
 import logging
-from typing import Any
-from dataclasses import dataclass, field
 from collections.abc import MutableMapping
+from dataclasses import dataclass, field
+from typing import Any, ClassVar
 
-from .manager import Manager
+from tqdm.asyncio import tqdm
+
+from .manager import Manager, QueuedCall
 
 logger = logging.getLogger(__name__)
-# T = TypeVar("T", bound=Awaitable[Callable])
 
-@dataclass
+
+@dataclass(slots=True)
 class CachedManager(Manager):
-    """Version of a `batchedllm.Manager` with caching
-    Note:
-    without provider all requests are stored in memory
-    """
-    provider: MutableMapping[Any, Any] = field(default_factory=dict)
-    _logger = logger
+    """version of Manager with a minimal cache for succesfull calls"""
 
-    def __init__(self, *args, **kwargs):    
-        raise NotImplementedError
-        
-    
-    # async def process(self):
-    #     pbar = tqdm(total=len(self._tasks)) if self.progress_bar else None
+    # TODO: assumes same client
+    cacher: MutableMapping[Any, Any] = field(default_factory=dict)
 
-    #     semaphore = asyncio.Semaphore(self.concurency)
+    _logger: ClassVar[logging.Logger] = logger
 
-    #     async def semaphore_wrapper(func):
-    #         async with semaphore:
-    #             try:
-    #                 res = await func
-    #             except Exception as e:
-    #                 if self.error_behavior == "raise":
-    #                     raise e
-    #                 elif self.error_behavior == "ignore":
-    #                     logger.exception(e)
-    #                     res = None
-    #                 else:
-    #                     res = e
+    async def process(self) -> list[Any | Exception]:
+        queue, self._queue = self._queue, []
 
-    #             if pbar:
-    #                 pbar.update()
-    #             return res
+        if not queue:
+            return []
 
-    #     tasks_to_gather = []
-    #     for task in self._tasks:
-    #         logger.debug("calling %s's method %s with *args: `%s` and **kwargs: `%s`", self.client, task["func"], task["args"], task["kwargs"])
-            
-    #         key = dumps({"path": self._latest_path, "args": task["args"], "kwargs": task["kwargs"]})
-    #         if key in self.provider:
-    #             tasks_to_gather.append(self.provider[key])
-    #         else:
-    #             value = await to_call(*args, **kwargs)
+        pbar = tqdm(total=len(queue)) if self.progress_bar else None
+        semaphore = asyncio.Semaphore(self.concurrency)
 
-    #             self.provider[key] = value
-                
-    #             self._latest_path = list()
-            
-    #         tasks_to_gather.append(semaphore_wrapper(task["func"](*task["args"], **task["kwargs"])))
+        async def semaphore_wrapper(task: QueuedCall) -> Any:
+            self._logger.debug(
+                "executing `%s.%s(*%s, **%s)",
+                self.client,
+                ".".join(task.path),
+                task.args or tuple(),
+                task.kwargs or dict(),
+            )
 
-    #     return await asyncio.gather(*tasks_to_gather)
-    
+            try:
+                async with semaphore:
+                    try:
+                        result = task.func(
+                            *(task.args or tuple()), **(task.kwargs or dict())
+                        )
+                        if inspect.isawaitable(result):
+                            return await result
+                        return result
+                    except Exception as exc:
+                        self._logger.debug(
+                            "executing `%s.%s(*%s, **%s) failed",
+                            self.client,
+                            ".".join(task.path),
+                            task.args or tuple(),
+                            task.kwargs or dict(),
+                            exc_info=exc,
+                        )
+                        if self.error_behavior == "raise":
+                            raise exc
+                        elif self.error_behavior == "ignore":
+                            return None
+                        elif self.error_behavior == "forward":
+                            return exc
+            finally:
+                if pbar:
+                    pbar.update()
+
+        async def cached_semaphore_wrapper(task: QueuedCall) -> Any:
+            key = task.as_cache_key()
+
+            if key not in self.cacher:
+                self.cacher[key] = semaphore_wrapper(task)
+            else:
+                if pbar:
+                    pbar.update()
+
+            return self.cacher[key]
+
+        try:
+            return await asyncio.gather(*map(cached_semaphore_wrapper, queue))
+        finally:
+            if pbar:
+                pbar.close()

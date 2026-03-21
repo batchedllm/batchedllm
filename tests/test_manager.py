@@ -1,147 +1,197 @@
 import asyncio
 import logging
+from typing import Any, cast
+from dataclasses import dataclass, field
 
 import pytest
 
 from batchedllm import Manager
 
 
+@dataclass
 class MockAI:
-    def __init__(self):
-        self.history = []
-        self.active = 0
-        self.max_active = 0
-        self.responses = self.Responses(self)
-        self.not_callable = "not callable"
+    history: list = field(default_factory=list)
+    active: int = 0
+    max_active: int = 0
 
-    class Responses:
-        def __init__(self, parent):
-            self.parent = parent
+    chat: "Chat" = field(init=False)
 
-        async def create(self, input, *, delay=0, fail=False):
-            self.parent.active += 1
-            self.parent.max_active = max(self.parent.max_active, self.parent.active)
-
-            self.parent.history.append(("responses.create", input))
-
-            try:
-                await asyncio.sleep(delay)
-                if fail:
-                    raise ValueError("fail")
-                return {"result": input}
-            finally:
-                self.parent.active -= 1
-
-    class Files:
-        def list(self):
-            return {"result": "not awaitable"}
+    def __post_init__(self):
+        self.chat = Chat(self)
 
 
-class BrokenAI:
-    def __init__(self):
-        self.files = MockAI.Files()
+@dataclass
+class Chat:
+    parent: MockAI
+
+    completions: "Completions" = field(init=False)
+
+    def __post_init__(self):
+        self.completions = Completions(self)
 
 
-def test_call_records_latest_path_and_task_details():
-    manager = Manager(client=MockAI())
+@dataclass
+class Completions:
+    parent: Chat
 
-    returned = manager.responses.create("hello")
+    async def create(self, value, *, delay: int = 0, fail: bool = False):
+        self.parent.parent.active += 1
+        self.parent.parent.max_active = max(
+            self.parent.parent.max_active, self.parent.parent.active
+        )
+        self.parent.parent.history.append(("chat.completions.create", value))
+
+        try:
+            await asyncio.sleep(delay)
+            if fail:
+                raise ValueError(value)
+            return value
+        finally:
+            self.parent.parent.active -= 1
+
+    def sync_create(self, value):
+        self.parent.parent.history.append(("chat.completions.sync_create", value))
+        return value
+
+
+def test_generally_works():
+    manager = Manager(MockAI())
+
+    partial = manager.chat.completions
+
+    partial.create("hello")
+    returned = partial.create("world", delay=1).chat.completions.create(value="!")
 
     assert returned is manager
-    assert manager._latest_path == []
-    assert len(manager._tasks) == 1
-    assert manager._tasks[0].path == ("responses", "create")
-    assert manager._tasks[0].args == ("hello",)
-    assert manager._tasks[0].kwargs is None
+    assert len(manager._queue) == 3
+    assert manager._queue[0].path == ("chat", "completions", "create")
+    assert manager._queue[0].args == ("hello",)
+    assert manager._queue[0].kwargs is None
+    assert manager._queue[1].path == ("chat", "completions", "create")
+    assert manager._queue[1].args == ("world",)
+    assert manager._queue[1].kwargs == {"delay": 1}
+    assert manager._queue[2].path == ("chat", "completions", "create")
+    assert manager._queue[2].args is None
+    assert manager._queue[2].kwargs == {"value": "!"}
+
+
+def test_paths_dont_cross():
+    manager = Manager(MockAI())
+
+    manager.chat
+    manager.chat.completions
+    manager.chat.completions.create
+    manager.this.can.be.any.path_we.dont.care.until.you.call.process
+    manager.chat.completions.create("only one")
+
+    assert len(manager._queue) == 1
+    assert manager._queue[0].path == ("chat", "completions", "create")
+
+
+def test_paths_dont_cross_even_when_error():
+    manager = Manager(MockAI())
+
+    with pytest.raises(TypeError, match="is not callable"):
+        manager.history()
+
+    manager.chat.completions.create("only one even if previous errors")
+
+    assert len(manager._queue) == 1
+    assert manager._queue[0].path == ("chat", "completions", "create")
+
+
+def test_sync_works():
+    manager = Manager(MockAI())
+    manager.chat.completions.sync_create("sync")
+
+    result = manager.sync_process()
+
+    assert result == ["sync"]
+    assert len(manager._queue) == 0
 
 
 @pytest.mark.asyncio
-async def test_process_returns_results_in_submission_order():
+async def test_async_works():
     client = MockAI()
-    manager = Manager(client=client)
+    manager = Manager(client)
 
-    manager.responses.create("first")
-    manager.responses.create("second")
+    manager.chat.completions.create("first")
+    manager.chat.completions.sync_create("second")
 
     result = await manager.process()
 
     assert result == [
-        {"result": "first"},
-        {"result": "second"},
+        "first",
+        "second",
     ]
     assert client.history == [
-        ("responses.create", "first"),
-        ("responses.create", "second"),
+        ("chat.completions.create", "first"),
+        ("chat.completions.sync_create", "second"),
     ]
+    assert len(manager._queue) == 0
 
 
 @pytest.mark.asyncio
-async def test_process_raises_when_error_behavior_is_raise():
-    manager = Manager(client=MockAI(), error_behavior="raise")
+async def test_error_behavior_is_raise():
+    manager = Manager(MockAI(), error_behavior="raise")
 
-    manager.responses.create("fail", fail=True)
+    manager.chat.completions.create("fail", fail=True)
 
     with pytest.raises(ValueError, match="fail"):
         await manager.process()
 
 
 @pytest.mark.asyncio
-async def test_process_ignores_errors_and_logs_them(caplog):
-    manager = Manager(client=MockAI(), error_behavior="ignore")
-    manager.responses.create("ok")
-    manager.responses.create("fail", fail=True)
+async def test_error_behavior_is_ignore(caplog):
+    manager = Manager(MockAI(), error_behavior="ignore")
+    manager.chat.completions.create("ok")
+    manager.chat.completions.create("fail", fail=True)
 
-    with caplog.at_level(logging.ERROR):
+    with caplog.at_level(logging.DEBUG):
         result = await manager.process()
 
-    assert result == [{"result": "ok"}, None]
+    assert result == ["ok", None]
     assert any(record.exc_info for record in caplog.records)
 
 
 @pytest.mark.asyncio
-async def test_process_forwards_exceptions_as_results():
-    manager = Manager(client=MockAI(), error_behavior="forward")
-    manager.responses.create("ok")
-    manager.responses.create("fail", fail=True)
+async def test_error_behavior_is_forward():
+    manager = Manager(MockAI(), error_behavior="forward")
+    manager.chat.completions.create("ok")
+    manager.chat.completions.create("fail", fail=True)
 
     result = await manager.process()
 
-    assert result[0] == {"result": "ok"}
+    assert result[0] == "ok"
     assert isinstance(result[1], ValueError)
     assert str(result[1]) == "fail"
 
 
 @pytest.mark.asyncio
-async def test_process_respects_concurrency_limit():
+async def test_concurency_respected():
     client = MockAI()
-    manager = Manager(client=client, concurency=2)
+    manager = Manager(client, concurrency=2)
 
     for value in range(5):
-        manager.responses.create(f"job-{value}", delay=0.01)
+        manager.chat.completions.create(f"task-{value}")
 
     result = await manager.process()
 
     assert result == [
-        {"result": "job-0"},
-        {"result": "job-1"},
-        {"result": "job-2"},
-        {"result": "job-3"},
-        {"result": "job-4"},
+        "task-0",
+        "task-1",
+        "task-2",
+        "task-3",
+        "task-4",
     ]
     assert client.max_active == 2
 
 
-def test_call_raises_type_error_for_not_callable_target():
-    manager = Manager(client=MockAI())
-
-    with pytest.raises(TypeError, match="is not callable"):
-        manager.not_callable()
+def test_typechecks_concurrency():
+    with pytest.raises(ValueError, match="positive integer"):
+        Manager(MockAI(), concurrency=0)
 
 
-def test_sync_process_returns_results_without_running_loop():
-    manager = Manager(client=MockAI())
-    manager.responses.create("sync")
-
-    result = manager.sync_process()
-
-    assert result == [{"result": "sync"}]
+def test_typechecks_error_behavior():
+    with pytest.raises(ValueError, match="error_behavior"):
+        Manager(MockAI(), error_behavior=cast(Any, "nope"))
