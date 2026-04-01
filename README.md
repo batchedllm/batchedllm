@@ -1,6 +1,8 @@
 # BatchedLLM
 like itertools.batched but for calling LLM
 
+[![Ruff and Ty and PyTest checks](https://github.com/batchedllm/batchedllm/actions/workflows/lint_and_test.yml/badge.svg)](https://github.com/batchedllm/batchedllm/actions/workflows/lint_and_test.yml)
+
 ## Example
 Run the OpenAI speed comparison example with `uv --script`:
 
