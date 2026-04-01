@@ -30,7 +30,7 @@ jobs:
         run: |
           import os, sys
           from batchedllm import __version__
-          sys.exit(__version__ == os.environ["GIT_TAG"])
+          sys.exit("v" + __version__ == os.environ["GIT_TAG"])
 
       - uses: actions/upload-artifact@v4
         with:
