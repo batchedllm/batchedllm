@@ -24,7 +24,7 @@ jobs:
 
       - run: uv build
 
-      - shell: python
+      - shell: uv run {0}
         env:
           GIT_TAG: ${{ github.ref_name }}
         run: |
