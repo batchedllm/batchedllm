@@ -24,13 +24,13 @@ jobs:
 
       - run: uv build
 
-      - shell: uv run {0}
+      - shell: uv run python {0}
         env:
           GIT_TAG: ${{ github.ref_name }}
         run: |
           import os, sys
           from batchedllm import __version__
-          sys.exit("v" + __version__ == os.environ["GIT_TAG"])
+          sys.exit(0 if "v" + __version__ == os.environ["GIT_TAG"] else 1)
 
       - uses: actions/upload-artifact@v4
         with:
