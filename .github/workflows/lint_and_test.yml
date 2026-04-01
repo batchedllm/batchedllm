@@ -16,7 +16,7 @@ jobs:
 
       - run: uv sync --locked --all-extras --dev
 
-      - run: uv run ruff check
+      - run: uv run ruff check >> $GITHUB_STEP_SUMMARY
 
   ty_check:
     runs-on: ubuntu-latest
@@ -31,7 +31,7 @@ jobs:
 
       - run: uv sync --locked --all-extras --dev
 
-      - run: uv run ty check
+      - run: uv run ty check >> $GITHUB_STEP_SUMMARY
 
   pytest:
     runs-on: ubuntu-latest
@@ -46,4 +46,4 @@ jobs:
 
       - run: uv sync --locked --all-extras --dev
 
-      - run: uv run pytest
+      - run: uv run pytest >> $GITHUB_STEP_SUMMARY
