@@ -20,10 +20,13 @@
         default = pkgs.mkShell {
           buildInputs = with pkgs; [
             git
-            
+
+            act
+
             python313 # TODO: keep in sync with pyproject.toml
             ruff
             ty
+            pre-commit
             uv
           ];
 
