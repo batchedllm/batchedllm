@@ -43,6 +43,9 @@ jobs:
       - build
     permissions:
       contents: write
+    environment:
+      name: github
+      url: https://github.com/batchedllm/batchedllm/releases/latest
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -59,7 +62,6 @@ jobs:
       - build
     permissions:
       id-token: write # for trusted publishing
-
     environment:
       name: pypi
       url: https://pypi.org/p/batchedllm
