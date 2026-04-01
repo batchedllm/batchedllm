@@ -23,7 +23,7 @@
 
             act
 
-            python313 # TODO: keep in sync with pyproject.toml
+            python312 # TODO: keep in sync with pyproject.toml
             ruff
             ty
             pre-commit
