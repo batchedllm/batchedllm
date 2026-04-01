@@ -1,6 +1,6 @@
 name: Run ckecks for code quallity
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   ruff_check:
