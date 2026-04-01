@@ -2,7 +2,8 @@ name: Upload to PyPI
 
 on:
   release:
-    types: [published, edited]
+    types: [published]
+  workflow_dispatch:
 
 permissions:
   contents: read
