@@ -1,4 +1,4 @@
-name: Run ckecks for code quallity
+name: Ruff and Ty and PyTest checks
 
 on: [push, pull_request]
 
