@@ -12,6 +12,6 @@ repos:
     - id: ruff-check
       types_or: [ python, pyproject ]
 - repo: https://github.com/allganize/ty-pre-commit
-  rev: v0.0.27
+  rev: v0.0.30
   hooks:
     - id: ty-check
