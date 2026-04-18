@@ -12,7 +12,7 @@ import random
 import asyncio
 from time import perf_counter
 
-from openai import AsyncOpenAI # ty: ignore[unresolved-import]
+from openai import AsyncOpenAI  # ty: ignore[unresolved-import]
 from batchedllm import Manager
 
 PROMPTS = [

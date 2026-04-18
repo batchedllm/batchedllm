@@ -37,7 +37,7 @@
 
           shellHook = ''
             unset PYTHONPATH
-            uv sync
+            uv sync --all-groups
             . .venv/bin/activate
             export PATH="${pkgs.ruff}/bin:${pkgs.ty}/bin:$PATH"
           '';
