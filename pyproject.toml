@@ -25,7 +25,7 @@ dev = [
     "pytest>=8.4.2",
     "pytest-asyncio>=1.2.0",
     "ruff>=0.15.7",
-    "ty>=0.0.24",
+    "ty>=0.0.32",
 ]
 openai = [
     "openai>=2.32.0",
