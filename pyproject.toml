@@ -28,7 +28,7 @@ dev = [
     "ty>=0.0.24",
 ]
 openai = [
-    "openai>=2.32.0",
+    "openai>=2.33.0",
 ]
 
 [tool.pytest.ini_options]
