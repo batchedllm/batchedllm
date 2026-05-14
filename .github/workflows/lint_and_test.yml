@@ -48,4 +48,6 @@ jobs:
 
       - run: uv run coverage run -m pytest >> $GITHUB_STEP_SUMMARY
       
-      - run: uv run coverage report -m >> $GITHUB_STEP_SUMMARY
+      # - run: echo "\n\n\n" >> $GITHUB_STEP_SUMMARY
+      
+      - run: uv run coverage report -m  --format markdown >> $GITHUB_STEP_SUMMARY
