@@ -32,7 +32,7 @@ jobs:
           from batchedllm import __version__
           sys.exit(0 if "v" + __version__ == os.environ["GIT_TAG"] else 1)
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-dist
           path: dist/
