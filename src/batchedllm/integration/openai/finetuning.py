@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from openai import OpenAI, AsyncOpenAI
+from openai import OpenAI
 
 from ...batch import Batch
 from .file import TextFile
@@ -12,7 +12,9 @@ class FinetuningSupervisor:
     train: Batch = field(default_factory=Batch)
     validation: Batch = field(default_factory=Batch)
     test: Batch = field(default_factory=Batch)
-    global_system_prompt: str | None = None # TODO: needs to be a property to update batches?
+    global_system_prompt: str | None = (
+        None  # TODO: needs to be a property to update batches?
+    )
     _finetuning_jobs: list = field(default_factory=list)
 
     def __post_init__(self):
@@ -22,10 +24,14 @@ class FinetuningSupervisor:
             self.test.global_system_prompt = self.global_system_prompt
 
     def create_finetuning_job(self, model: str):
-        train_file = TextFile.from_batch("train.jsonl", self.train).create(self.client, "finetuning")
-        validation_file = TextFile.from_batch("validate.jsonl", self.train).create(self.client, "finetuning")
+        train_file = TextFile.from_batch("train.jsonl", self.train).create(
+            self.client, "fine-tune"
+        )
+        validation_file = TextFile.from_batch("validate.jsonl", self.train).create(
+            self.client, "fine-tune"
+        )
 
-        return  self.client.fine_tuning.jobs.create(
+        return self.client.fine_tuning.jobs.create(
             training_file=train_file.id,
             validation_file=validation_file.id,
             model=model,

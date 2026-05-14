@@ -12,7 +12,7 @@ import random
 import asyncio
 from time import perf_counter
 
-from openai import AsyncOpenAI  # ty: ignore[unresolved-import]
+from openai import AsyncOpenAI
 from batchedllm import Manager
 
 PROMPTS = [
@@ -45,7 +45,11 @@ async def main() -> None:
         )
         # process separetly
         try:
-            sequential_outputs.append(response.choices[0].message.content.strip())
+            sequential_outputs.append(
+                response.choices[0].message.content.strip()
+                if response.choices[0].message.content is not None
+                else ""
+            )
         except (AttributeError, IndexError, TypeError):
             sequential_outputs.append(repr(response))
     sequential_elapsed = perf_counter() - sequential_started

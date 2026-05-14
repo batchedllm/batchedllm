@@ -19,26 +19,26 @@ dependencies = [
     "tqdm>=4.67.3",
 ]
 
+[project.optional-dependencies]
+openai = [
+    "openai>=2.32.0",
+]
+
 [dependency-groups]
 dev = [
+    "coverage>=7.14.0",
     "pre-commit>=4.5.1",
     "pytest>=8.4.2",
     "pytest-asyncio>=1.2.0",
     "ruff>=0.15.7",
     "ty>=0.0.24",
 ]
-openai = [
-    "openai>=2.32.0",
-]
 
-[tool.pytest.ini_options]
-pythonpath = ["src"]
-asyncio_mode = "auto"
-
-
+# more meta
 [project.urls]
 repository = "https://github.com/batchedllm/batchedllm"
 
+# build
 [build-system]
 requires = ["hatchling", "hatch-docstring-description"]
 build-backend = "hatchling.build"
@@ -47,3 +47,14 @@ build-backend = "hatchling.build"
 path = "src/batchedllm/__init__.py"
 
 [tool.hatch.metadata.hooks.docstring-description]
+
+# tools
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+addopts = ["--import-mode=importlib"]
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+omit = [
+    "tests/**/*",
+]
