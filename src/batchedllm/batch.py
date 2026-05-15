@@ -1,5 +1,5 @@
 import json
-from typing import overload
+from typing import overload, Callable
 from dataclasses import dataclass, field
 
 
@@ -90,5 +90,18 @@ class Batch:
 
         self._messages.append(messages)
 
-    def to_openai(self) -> str:
-        return "\n".join([json.dumps({"messages": m}) for m in self._messages])
+    def to_jsonl(self, preprocess: Callable[[list], dict] | None = None) -> str:
+        """
+        convert to jsonl format with optional preprocess function, intended for hypertuning where you need to specify method, model, etc
+        """
+        return "\n".join([json.dumps(preprocess(m) if preprocess is not None else m) for m in self._messages])
+
+    @classmethod
+    def from_jsonl(cls, text: str, global_system_prompt: str | None = None, preprocess: Callable[[dict | list], list] | None = None):
+        new_instance = cls(global_system_prompt)
+        for line in text.split("\n"):
+            message = json.loads(line)
+            if preprocess is not None:
+                message = preprocess(message)
+            new_instance.add_messages(message)
+        return new_instance
