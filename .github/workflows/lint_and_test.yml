@@ -36,6 +36,8 @@ jobs:
   pytest:
     name: pytest / Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write # for OIDC token-less upload
     strategy:
       fail-fast: false
       matrix:
@@ -60,13 +62,13 @@ jobs:
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          use_oidc: true
           name: ${{ matrix.python-version }}
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
         uses: codecov/codecov-action@v5
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          use_oidc: true
           name: ${{ matrix.python-version }}
           report_type: test_results
