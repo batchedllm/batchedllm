@@ -10,7 +10,7 @@ like itertools.batched but for calling LLM
 ![GitHub commits since latest release](https://img.shields.io/github/commits-since/batchedllm/batchedllm/latest?style=flat-square&logo=github&logoSize=auto)
 
 [![Ruff and Ty and PyTest checks](https://img.shields.io/github/actions/workflow/status/batchedllm/batchedllm/lint_and_test.yml?style=flat-square&logo=githubactions&logoSize=auto&label=Lint%2BTest)](https://github.com/batchedllm/batchedllm/actions/workflows/lint_and_test.yml)
-![Codecov](https://img.shields.io/codecov/c/github/batchedllm/batchedllm?style=flat-square&logo=codecov&logoSize=auto)
+[![Codecov](https://img.shields.io/codecov/c/github/batchedllm/batchedllm?style=flat-square&logo=codecov&logoSize=auto)](https://app.codecov.io/gh/batchedllm/batchedllm)
 
 ## What? Why? How?
 This is a wrapper for any async client to limit amount of concurent requests. More features are planned, like caching and budget restrictions.
