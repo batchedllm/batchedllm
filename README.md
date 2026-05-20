@@ -7,7 +7,7 @@ like itertools.batched but for calling LLM
 ![Linter - ty](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ty/main/assets/badge/v0.json&label=type%20checking&style=flat-square)
 
 [![PyPI - Version](https://img.shields.io/pypi/v/batchedllm?style=flat-square&logo=pypi&logoSize=auto)](https://pypi.org/project/batchedllm/)
-![GitHub commits since latest release](https://img.shields.io/github/commits-since/batchedllm/batchedllm/latest?style=flat-square&logo=github&logoSize=auto)
+[![GitHub commits since latest release](https://img.shields.io/github/commits-since/batchedllm/batchedllm/latest?style=flat-square&logo=github&logoSize=auto)](https://github.com/batchedllm/batchedllm/releases/latest)
 
 [![Ruff and Ty and PyTest checks](https://img.shields.io/github/actions/workflow/status/batchedllm/batchedllm/lint_and_test.yml?style=flat-square&logo=githubactions&logoSize=auto&label=Lint%2BTest)](https://github.com/batchedllm/batchedllm/actions/workflows/lint_and_test.yml)
 [![Codecov](https://img.shields.io/codecov/c/github/batchedllm/batchedllm?style=flat-square&logo=codecov&logoSize=auto)](https://app.codecov.io/gh/batchedllm/batchedllm)
