@@ -15,3 +15,4 @@ repos:
   rev: v0.0.35
   hooks:
     - id: ty-check
+      args: [ --output-format=full, --ignore=unresolved-import ]
