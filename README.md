@@ -6,17 +6,11 @@ like itertools.batched but for calling LLM
 ![Formatter - Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/format.json?style=flat-square)
 ![Linter - ty](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ty/main/assets/badge/v0.json&label=type%20checking)
 
-
-<!-- ![Static Badge](https://img.shields.io/badge/linter-gray?style=flat-square&logo=ty&logoSize=auto) -->
-
-
 [![PyPI - Version](https://img.shields.io/pypi/v/batchedllm?style=flat-square&logo=pypi&logoSize=auto)](https://pypi.org/project/batchedllm/)
-
+![GitHub commits since latest release](https://img.shields.io/github/commits-since/batchedllm/batchedllm/latest?style=flat-square&logo=github&logoSize=auto)
 
 [![Ruff and Ty and PyTest checks](https://img.shields.io/github/actions/workflow/status/batchedllm/batchedllm/lint_and_test.yml?style=flat-square&logo=githubactions&logoSize=auto&label=Lint%2BTest)](https://github.com/batchedllm/batchedllm/actions/workflows/lint_and_test.yml)
-
-
-<!-- TODO: add pytest coverage -->
+![Codecov](https://img.shields.io/codecov/c/github/batchedllm/batchedllm?style=flat-square&logo=codecov&logoSize=auto)
 
 ## What? Why? How?
 This is a wrapper for any async client to limit amount of concurent requests. More features are planned, like caching and budget restrictions.
