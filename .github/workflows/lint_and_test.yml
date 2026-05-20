@@ -62,4 +62,4 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           name: ${{ matrix.python-version }}
-          report_type: [coverage, test_results]
+          report_type: coverage,test_results
