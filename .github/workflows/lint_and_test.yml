@@ -16,7 +16,7 @@ jobs:
 
       - run: uv sync --locked --all-extras --dev
 
-      - run: uv run ruff check --output-format github >> $GITHUB_STEP_SUMMARY
+      - run: uv run ruff check >> $GITHUB_STEP_SUMMARY
 
   ty_check:
     runs-on: ubuntu-latest
@@ -31,7 +31,7 @@ jobs:
 
       - run: uv sync --locked --all-extras --dev
 
-      - run: uv run ty check --output-format github >> $GITHUB_STEP_SUMMARY
+      - run: uv run ty check >> $GITHUB_STEP_SUMMARY
 
   pytest:
     name: pytest / Python ${{ matrix.python-version }}

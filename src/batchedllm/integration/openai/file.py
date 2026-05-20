@@ -18,11 +18,11 @@ class TextFile:
 
     @classmethod
     def from_batch(cls, filename: str, batch: Batch) -> Self:
-        # raise NotImplementedError(
-        #     "TODO: add method, model, etc as preprocessing function"
-        # )
+        raise NotImplementedError(
+            "TODO: add method, model, etc as preprocessing function"
+        )
 
-        return cls(filename).write(batch.to_openai())
+        return cls(filename).write(batch.to_jsonl())
 
     def write(self, text: str) -> Self:
         self._text += text
