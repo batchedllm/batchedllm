@@ -56,3 +56,11 @@ jobs:
       - run: echo "\n\n\n" >> $GITHUB_STEP_SUMMARY
 
       - run: uv run coverage report -m --format markdown >> $GITHUB_STEP_SUMMARY
+
+      - run: uv run coverage xml
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          name: ${{ matrix.python-version }}
