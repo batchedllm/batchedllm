@@ -97,7 +97,12 @@ class Batch:
         return "\n".join([json.dumps(preprocess(m) if preprocess is not None else m) for m in self._messages])
 
     @classmethod
-    def from_jsonl(cls, text: str, global_system_prompt: str | None = None, preprocess: Callable[[dict | list], list] | None = None):
+    def from_jsonl(
+        cls,
+        text: str,
+        global_system_prompt: str | None = None,
+        preprocess: Callable[[dict | list], list] | None = None,
+    ):
         new_instance = cls(global_system_prompt)
         for line in text.split("\n"):
             message = json.loads(line)
