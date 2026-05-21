@@ -60,7 +60,7 @@ dev = [
     { name = "pytest", specifier = ">=8.4.2" },
     { name = "pytest-asyncio", specifier = ">=1.2.0" },
     { name = "ruff", specifier = ">=0.15.13" },
-    { name = "ty", specifier = ">=0.0.35" },
+    { name = "ty", specifier = ">=0.0.38" },
 ]
 
 [[package]]
