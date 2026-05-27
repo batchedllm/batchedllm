@@ -25,7 +25,7 @@ dependencies = [
 
 [project.optional-dependencies]
 openai = [
-    "openai>=2.32.0",
+    "openai>=2.38.0",
 ]
 
 [dependency-groups]
