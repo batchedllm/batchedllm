@@ -30,7 +30,7 @@ openai = [
 
 [dependency-groups]
 dev = [
-    "coverage>=7.14.0",
+    "coverage>=7.14.1",
     "pre-commit>=4.5.1",
     "pytest>=8.4.2",
     "pytest-asyncio>=1.2.0",
