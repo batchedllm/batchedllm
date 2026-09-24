@@ -1,8 +1,10 @@
 junit.xml
 .coverage
+coverage.*
 
 .venv/
 dist/
+result/
 
 **/.pytest_cache/
 **/.ruff_cache/
