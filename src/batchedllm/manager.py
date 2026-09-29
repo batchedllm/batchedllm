@@ -1,142 +1,123 @@
 import asyncio
-import inspect
 import logging
-from collections.abc import Awaitable, Callable
+from inspect import isawaitable
 from dataclasses import dataclass, field
-from typing import Any, ClassVar, Literal, cast, get_args
+from typing import Any, ClassVar, Literal, cast
+from asyncio import Task, create_task, AbstractEventLoop, get_event_loop, Future, gather
+from collections.abc import Callable
+from warnings import warn
 
-from tqdm.asyncio import tqdm
+from .cache import Cache, SimpleCache
+from .engine import (
+    AbstractAsyncEngine,
+    AsyncEngine,
+)
+from .progress import Progress, SimpleProgress
+from .infinitely_callable import InfinitelyCallable, Call
+from .batch import Batch
 
 logger = logging.getLogger(__name__)
 
-type QueuedCallable = Callable[..., Awaitable[Any] | Any]
 type ErrorBehavior = Literal["raise", "ignore", "forward"]
 
 
 @dataclass(slots=True)
-class QueuedCall:
+class Promise[T]:
+    fn: Callable
     path: tuple[str, ...]
-    func: QueuedCallable
-    args: tuple[Any, ...] | None
-    kwargs: dict[str, Any] | None
+    args: tuple[Any, ...]
+    kwars: dict[str, Any]
+    _result: Any | T = None
+    _done: bool = False
+    
+    def result(self) -> T:
+        if not self._done:
+            raise ValueError("Promise is not fulfilled")
+        else:
+            return self._result
+    
+    def set_result(self, value: T):
+        self._done, self._result = True, value
 
-    def as_cache_key(self) -> str:
-        # TODO: maybe sort args/kwargs
-        return f"{'.'.join(self.path)}.{self.func}(*({self.args or tuple()}), **{{{self.kwargs or dict()}}})"
+    def done(self) -> bool:
+        return self._done 
 
-
-@dataclass(slots=True, frozen=True)
-class _PathBuilder:
-    """immutable path builder to avoid path leakage and allow for path reuse"""
-
-    manager: "Manager"
-    path: tuple[str, ...]
-
-    def __getattr__(self, name: str) -> "_PathBuilder":
-        return _PathBuilder(self.manager, (*self.path, name))
-
-    def __call__(self, *args: Any | None, **kwargs: Any | None) -> "Manager":
-        target = self.manager.client
-        for part in self.path:
-            target = getattr(target, part)
-
-        # if not isinstance(target, QueuedCallable):
-        if not callable(target):
-            raise TypeError(f"Resolved target `{'.'.join(self.path)}` is not callable")
-
-        self.manager._queue.append(
-            QueuedCall(
-                path=self.path,
-                func=cast(QueuedCallable, target),
-                args=args or None,
-                kwargs=dict(kwargs) or None,
-            )
-        )
-        return self.manager
-
-
-@dataclass(slots=True)
-class Manager:
-    """basic implementation of an async batch manager"""
+    
+@dataclass
+class AsyncManager(InfinitelyCallable):
+    """implementation of an async client manager"""
 
     client: object
-    concurrency: int = 1
-    error_behavior: ErrorBehavior = "raise"
-    progress_bar: bool = False
+    cache: Cache = field(default_factory=SimpleCache)
+    engine: AbstractAsyncEngine = field(default_factory=AsyncEngine)
+    progress: Progress = field(default_factory=SimpleProgress)
 
-    _queue: list[QueuedCall] = field(default_factory=list, init=False, repr=False)
+    error_behavior: ErrorBehavior = "raise"
 
     _logger: ClassVar[logging.Logger] = logger
 
-    def __post_init__(self) -> None:
-        #
-        if not (isinstance(self.concurrency, int) and self.concurrency >= 1):
-            raise ValueError("concurrency must be a positive integer")
+    _tasks: list[Promise] = field(default_factory=list)
 
-        error_behavior_acceptable_values = get_args(ErrorBehavior.__value__)
-        if self.error_behavior not in error_behavior_acceptable_values:
-            raise ValueError(
-                f"error_behavior must be one of {', '.join(map('`{}`'.format, error_behavior_acceptable_values))}"
-            )
+    def callback(self, call: Call):
+        target = self.client
+        for path in call.path:
+            if not hasattr(target, path):
+                raise ValueError(f"{target} doesn't have attribute {path}")
+            target = getattr(target, path)
 
-    def __getattr__(self, name: str) -> _PathBuilder:
-        return _PathBuilder(self, (name,))
+        if not callable(target):
+            raise TypeError(f"{target} isn't callable")
 
-    async def process(self) -> list[Any]:
-        queue, self._queue = self._queue, []
+        promise = Promise(target, call.path, call.args, call.kwargs)
+        self._tasks.append(promise)
+        return promise
 
-        if not queue:
-            return []
+    async def __call_(self, batch: Batch | None = None) -> list[Any]:
+        if batch:
+            for call in batch:
+                self.callback(call)
 
-        pbar = tqdm(total=len(queue)) if self.progress_bar else None
-        semaphore = asyncio.Semaphore(self.concurrency)
+        self._tasks, tasks = [], self._tasks
 
-        async def semaphore_wrapper(task: QueuedCall) -> Any:
+        pbar = self.progress(self._tasks)
+
+        async def engine_wrapper(prom):
             self._logger.debug(
                 "executing `%s.%s(*%s, **%s)",
                 self.client,
-                ".".join(task.path),
-                task.args or tuple(),
-                task.kwargs or dict(),
+                ".".join(prom.path),
+                prom.args,
+                prom.kwargs,
             )
+            async with self.engine as engine:
+                try:
+                    result = prom.fn(*prom.args, **prom.kwargs)
+                    if isawaitable(result):
+                        result = await result
+                    else:
+                        warn
+                except Exception as exc:
+                    result = exc
 
-            try:
-                async with semaphore:
-                    try:
-                        result = task.func(
-                            *(task.args or tuple()), **(task.kwargs or dict())
-                        )
-                        if inspect.isawaitable(result):
-                            return await result
-                        return result
-                    except Exception as exc:
-                        self._logger.debug(
-                            "executing `%s.%s(*%s, **%s) failed",
-                            self.client,
-                            ".".join(task.path),
-                            task.args or tuple(),
-                            task.kwargs or dict(),
-                            exc_info=exc,
-                        )
-                        if self.error_behavior == "raise":
-                            raise exc
-                        elif self.error_behavior == "ignore":
-                            return None
-                        elif self.error_behavior == "forward":
-                            return exc
-            finally:
-                if pbar:
-                    pbar.update()
+                    self._logger.exception(
+                        "exception when executing `%s.%s(*%s, **%s)",
+                        self.client,
+                        ".".join(prom.path),
+                        prom.args,
+                        prom.kwargs,
+                        exc_info=exc,
+                    )
+                    if self.error_behavior == "raise":
+                        raise exc
+                    elif self.error_behavior == "ignore":
+                        result = None
+                    elif self.error_behavior == "forward":
+                        result = exc
 
-        try:
-            return await asyncio.gather(*map(semaphore_wrapper, queue))
-        finally:
-            if pbar:
-                pbar.close()
+                engine.update(result)
+                pbar.update(result)
+                
+                prom.set_result(result)
+                return result
 
-    def sync_process(self) -> list[Any | Exception]:
-        """best effort to run async from sync, async version should be prefered"""
-        try:
-            return asyncio.get_running_loop().run_until_complete(self.process())
-        except RuntimeError:  # no loop running
-            return asyncio.run(self.process())
+        return await gather(*map(engine_wrapper, tasks))
